@@ -4,6 +4,8 @@ require 'jruby'
 
 com.headius.clojr.ClojrLibrary.new.load(JRuby.runtime, false)
 
+# STM
+
 ref = Clojr::STM::Ref.new
 
 p ref.deref
@@ -18,6 +20,8 @@ Clojr::STM.dosync do
 end
 p ref.deref
 
+# Vector
+
 vector = Clojr::Persistent::Vector.new('a')
 p vector[0]
 
@@ -29,3 +33,17 @@ p vector[2, 'c']
 vector2 = vector.assoc(1, 'b2')
 p vector2[1]
 p vector[1]
+
+# Map
+
+hmap = Clojr::Persistent::Map.hash
+%w[foo bar baz].each do |key|
+  hmap = hmap.assoc key, key.upcase
+end
+
+p hmap['bar']
+p hmap.key? 'foo'
+
+hmap2 = hmap.assoc('baz', 'WOO')
+p hmap2['baz']
+p hmap['baz']

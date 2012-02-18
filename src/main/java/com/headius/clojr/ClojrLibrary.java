@@ -2,12 +2,17 @@ package com.headius.clojr;
 
 import clojure.lang.IFn;
 import clojure.lang.IPersistentCollection;
+import clojure.lang.IPersistentMap;
 import clojure.lang.IPersistentVector;
 import clojure.lang.ISeq;
 import clojure.lang.LockingTransaction;
+import clojure.lang.PersistentArrayMap;
+import clojure.lang.PersistentHashMap;
+import clojure.lang.PersistentTreeMap;
 import clojure.lang.PersistentVector;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyHash;
 import org.jruby.RubyModule;
 import org.jruby.RubyObject;
 import org.jruby.anno.JRubyMethod;
@@ -18,11 +23,11 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.runtime.load.Library;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 public class ClojrLibrary implements Library {
     private Ruby runtime;
-    private RubyClass vectorClass;
 
     public void load(Ruby ruby, boolean wrap) throws IOException {
         runtime = ruby;
@@ -45,12 +50,15 @@ public class ClojrLibrary implements Library {
         RubyClass collection = persistent.defineClassUnder("Collection", ruby.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
         collection.defineAnnotatedMethods(Collection.class);
 
-        vectorClass = persistent.defineClassUnder("Vector", ruby.getObject(), new ObjectAllocator() {
+        RubyClass vector = persistent.defineClassUnder("Vector", ruby.getObject(), new ObjectAllocator() {
             public IRubyObject allocate(Ruby ruby, RubyClass rubyClass) {
                 return new Vector(ruby, rubyClass);
             }
         });
-        vectorClass.defineAnnotatedMethods(Vector.class);
+        vector.defineAnnotatedMethods(Vector.class);
+
+        RubyClass map = persistent.defineClassUnder("Map", ruby.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
+        map.defineAnnotatedMethods(Map.class);
     }
 
     public static class STM {
@@ -87,7 +95,7 @@ public class ClojrLibrary implements Library {
         }
     }
 
-    public class Collection<T extends IPersistentCollection> extends RubyObject {
+    public static class Collection<T extends IPersistentCollection> extends RubyObject {
         protected T collection;
 
         public Collection(Ruby runtime, RubyClass clazz) {
@@ -105,7 +113,7 @@ public class ClojrLibrary implements Library {
         }
     }
 
-    public class Vector extends Collection<IPersistentVector> {
+    public static class Vector extends Collection<IPersistentVector> {
         public Vector(Ruby runtime, RubyClass clazz) {
             super(runtime, clazz);
         }
@@ -172,6 +180,82 @@ public class ClojrLibrary implements Library {
         @JRubyMethod
         public IRubyObject pop(ThreadContext context) {
             return new Vector(context.runtime, metaClass, (PersistentVector)collection.pop());
+        }
+    }
+    
+    public static class Map extends Collection<IPersistentMap> {
+        public Map(Ruby runtime, RubyClass clazz) {
+            super(runtime, clazz);
+        }
+
+        public Map(Ruby runtime, RubyClass clazz, IPersistentMap collection) {
+            super(runtime, clazz, collection);
+        }
+        
+        @JRubyMethod(meta = true)
+        public static IRubyObject array(ThreadContext context, IRubyObject cls) {
+            return new Map(context.runtime, (RubyClass)cls, PersistentArrayMap.EMPTY);
+        }
+
+        @JRubyMethod(meta = true)
+        public static IRubyObject array(ThreadContext context, IRubyObject cls, IRubyObject arg) {
+            return new Map(context.runtime, (RubyClass)cls, populate(PersistentArrayMap.EMPTY, asHash(context, arg)));
+        }
+
+        @JRubyMethod(meta = true)
+        public static IRubyObject hash(ThreadContext context, IRubyObject cls) {
+            return new Map(context.runtime, (RubyClass)cls, PersistentHashMap.EMPTY);
+        }
+
+        @JRubyMethod(meta = true)
+        public static IRubyObject hash(ThreadContext context, IRubyObject cls, IRubyObject arg) {
+            return new Map(context.runtime, (RubyClass)cls, populate(PersistentHashMap.EMPTY, asHash(context, arg)));
+        }
+
+        @JRubyMethod(meta = true)
+        public static IRubyObject tree(ThreadContext context, IRubyObject cls) {
+            return new Map(context.runtime, (RubyClass)cls, PersistentTreeMap.EMPTY);
+        }
+
+        @JRubyMethod(meta = true)
+        public static IRubyObject tree(ThreadContext context, IRubyObject cls, IRubyObject arg) {
+            return new Map(context.runtime, (RubyClass)cls, populate(PersistentTreeMap.EMPTY, asHash(context, arg)));
+        }
+
+        @JRubyMethod
+        public IRubyObject assoc(ThreadContext context, IRubyObject key, IRubyObject value) {
+            return new Map(context.runtime, metaClass, collection.assoc(key, value));
+        }
+
+        @JRubyMethod
+        public IRubyObject without(ThreadContext context, IRubyObject key) {
+            return new Map(context.runtime, metaClass, collection.without(key));
+        }
+
+        @JRubyMethod(name = "key?")
+        public IRubyObject key_p(ThreadContext context, IRubyObject key) {
+            return context.runtime.newBoolean(collection.containsKey(key));
+        }
+        
+        @JRubyMethod(name = "[]")
+        public IRubyObject at(ThreadContext context, IRubyObject key) {
+            return (IRubyObject)collection.entryAt(key).val();
+        }
+
+        private static RubyHash asHash(ThreadContext context, IRubyObject arg) {
+            if (!(arg instanceof RubyHash)) {
+                throw context.runtime.newTypeError(arg, context.runtime.getHash());
+            }
+
+            return (RubyHash)arg;
+        }
+
+        private static IPersistentMap populate(IPersistentMap map, RubyHash hash) {
+            for (RubyHash.RubyHashEntry entry : (Set<RubyHash.RubyHashEntry>)hash.directEntrySet()) {
+                map = map.assoc(entry.getKey(), entry.getValue());
+            }
+
+            return map;
         }
     }
 
