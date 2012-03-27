@@ -1,3 +1,7 @@
 .idea
 target/
 clojr.iml
+.libcache/
+lib/clojr_ext.jar
+*.swp
+pkg/
