@@ -47,10 +47,7 @@ end
 desc "Compile the extension"
 task :compile => ["pkg/classes", :libcache] do |t|
   # Set up the classpath to include jars from our maven-gems copied to LIBCACHEDIR
-  cpstring = ""
-  Dir["#{File.dirname(__FILE__)}/#{LIBCACHEDIR}/*.jar"].each do |jar|
-    cpstring = "#{jar}:#{cpstring}"
-  end
+  cpstring = Dir["#{File.dirname(__FILE__)}/#{LIBCACHEDIR}/*.jar"].join(':')
   ant.javac :srcdir => "src", :destdir => t.prerequisites.first,
     :source => "1.5", :target => "1.5", :debug => true,
     :includeantruntime => false,
