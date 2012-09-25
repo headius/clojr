@@ -5,3 +5,4 @@ clojr.iml
 lib/clojr_ext.jar
 *.swp
 pkg/
+.rvmrc

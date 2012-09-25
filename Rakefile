@@ -47,7 +47,9 @@ end
 desc "Compile the extension"
 task :compile => ["pkg/classes", :libcache] do |t|
   # Set up the classpath to include jars from our maven-gems copied to LIBCACHEDIR
+  ENV['JAVA_OPTS'] = "-Xlint:unchecked"
   cpstring = Dir["#{File.dirname(__FILE__)}/#{LIBCACHEDIR}/*.jar"].join(':')
+  puts "${java.class.path}:${sun.boot.class.path}:#{cpstring}"
   ant.javac :srcdir => "src", :destdir => t.prerequisites.first,
     :source => "1.5", :target => "1.5", :debug => true,
     :includeantruntime => false,
