@@ -13,5 +13,5 @@ Gem::Specification.new do |s|
   s.summary = "Ease your Clojure integration into JRuby!"
   s.test_files = Dir["spec/*_spec.rb"]
   s.platform = "java"
-  s.add_dependency "mvn:org.clojure:clojure", "~> 1.3"
+  s.add_dependency "mvn:org.clojure:clojure", "~> 1.4"
 end
