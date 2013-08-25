@@ -148,7 +148,7 @@ public class ClojrLibrary implements Library {
 
         @JRubyMethod(rest = true)
         public IRubyObject initialize(ThreadContext context, IRubyObject[] initials) {
-            collection = PersistentVector.create(initials);
+            collection = PersistentVector.create((Object) initials);
             return context.nil;
         }
 
