@@ -1,6 +1,5 @@
-require 'target/clojr-1.0.jar'
-require 'lib/clojure-1.3.0.jar'
-require 'jruby'
+require 'java'
+require 'lib/clojr_ext.jar'
 
 com.headius.clojr.ClojrLibrary.new.load(JRuby.runtime, false)
 

@@ -6,3 +6,5 @@ lib/clojr_ext.jar
 *.swp
 pkg/
 .rvmrc
+.jbundler/
+Jarfile.lock
