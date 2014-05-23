@@ -15,6 +15,7 @@ import org.jruby.RubyClass;
 import org.jruby.RubyHash;
 import org.jruby.RubyModule;
 import org.jruby.RubyObject;
+import org.jruby.RubyArray;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.Block;
 import org.jruby.runtime.ObjectAllocator;
@@ -122,6 +123,15 @@ public class ClojrLibrary implements Library {
             super(runtime, clazz, collection);
         }
 
+        @JRubyMethod(name = "[]", rest = true, meta = true)
+        public static IRubyObject create(ThreadContext context, IRubyObject cls, IRubyObject[] items) {
+            PersistentVector vector = PersistentVector.EMPTY;
+            for(IRubyObject item : items) {
+                vector = vector.cons(item);
+            }
+            return new Vector(context.runtime, (RubyClass)cls, vector);
+        }
+
         @JRubyMethod
         public IRubyObject initialize(ThreadContext context) {
             collection = PersistentVector.EMPTY;
@@ -152,7 +162,7 @@ public class ClojrLibrary implements Library {
             return context.nil;
         }
 
-        @JRubyMethod
+        @JRubyMethod(name = {"cons", "append", "add"})
         public IRubyObject cons(ThreadContext context, IRubyObject obj) {
             return new Vector(context.runtime, metaClass, collection.cons(obj));
         }
@@ -161,7 +171,7 @@ public class ClojrLibrary implements Library {
         public IRubyObject empty(ThreadContext context) {
             return new Vector(context.runtime, metaClass, PersistentVector.EMPTY);
         }
-        
+
         @JRubyMethod(name = {"nth", "[]"})
         public IRubyObject nth(ThreadContext context, IRubyObject index) {
             return (IRubyObject)collection.nth((int)index.convertToInteger().getLongValue(), context.nil);
@@ -171,7 +181,7 @@ public class ClojrLibrary implements Library {
         public IRubyObject nth(IRubyObject index, IRubyObject notFound) {
             return (IRubyObject)collection.nth((int)index.convertToInteger().getLongValue(), notFound);
         }
-        
+
         @JRubyMethod
         public IRubyObject assoc(ThreadContext context, IRubyObject index, IRubyObject value) {
             return new Vector(context.runtime, metaClass, collection.assocN((int)index.convertToInteger().getLongValue(), value));
@@ -181,8 +191,21 @@ public class ClojrLibrary implements Library {
         public IRubyObject pop(ThreadContext context) {
             return new Vector(context.runtime, metaClass, (PersistentVector)collection.pop());
         }
+
+        @JRubyMethod
+        public RubyArray to_a(ThreadContext context) {
+            IRubyObject[] array = new IRubyObject[collection.count()];
+            int index = 0;
+            ISeq seq = collection.seq();
+            while (seq != null) {
+                array[index] = (IRubyObject)seq.first();
+                seq = seq.next();
+                index++;
+            }
+            return context.runtime.newArray(array);
+        }
     }
-    
+
     public static class Map extends Collection<IPersistentMap> {
         public Map(Ruby runtime, RubyClass clazz) {
             super(runtime, clazz);
@@ -191,7 +214,7 @@ public class ClojrLibrary implements Library {
         public Map(Ruby runtime, RubyClass clazz, IPersistentMap collection) {
             super(runtime, clazz, collection);
         }
-        
+
         @JRubyMethod(meta = true)
         public static IRubyObject array(ThreadContext context, IRubyObject cls) {
             return new Map(context.runtime, (RubyClass)cls, PersistentArrayMap.EMPTY);
@@ -236,7 +259,7 @@ public class ClojrLibrary implements Library {
         public IRubyObject key_p(ThreadContext context, IRubyObject key) {
             return context.runtime.newBoolean(collection.containsKey(key));
         }
-        
+
         @JRubyMethod(name = "[]")
         public IRubyObject at(ThreadContext context, IRubyObject key) {
             return (IRubyObject)collection.entryAt(key).val();
