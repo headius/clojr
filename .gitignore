@@ -3,3 +3,4 @@ Jarfile.lock
 .jbundler
 target
 pkg
+lib/clojr_ext.jar
