@@ -56,6 +56,7 @@ public class ClojrLibrary implements Library {
                 return new Vector(ruby, rubyClass);
             }
         });
+        vector.defineAnnotatedMethods(Collection.class);
         vector.defineAnnotatedMethods(Vector.class);
 
         RubyClass map = persistent.defineClassUnder("Map", ruby.getObject(), ObjectAllocator.NOT_ALLOCATABLE_ALLOCATOR);
@@ -112,6 +113,28 @@ public class ClojrLibrary implements Library {
         public IRubyObject count(ThreadContext context) {
             return context.runtime.newFixnum(collection.count());
         }
+
+        @JRubyMethod(name = {"to_a", "to_ary"})
+        public RubyArray toRubyArray() {
+            IRubyObject[] array = new IRubyObject[collection.count()];
+            int index = 0;
+            ISeq seq = collection.seq();
+            while (seq != null) {
+                array[index] = (IRubyObject)seq.first();
+                seq = seq.next();
+                index++;
+            }
+            return getRuntime().newArray(array);
+        }
+
+        @JRubyMethod(name = "inspect")
+        @Override
+        public IRubyObject inspect() {
+            Ruby runtime = getRuntime();
+            String className = getMetaClass().getRealClass().getName();
+            return runtime.newString(className + this.toRubyArray().inspect());
+        }
+
     }
 
     public static class Vector extends Collection<IPersistentVector> {
@@ -192,17 +215,36 @@ public class ClojrLibrary implements Library {
             return new Vector(context.runtime, metaClass, (PersistentVector)collection.pop());
         }
 
-        @JRubyMethod
-        public RubyArray to_a(ThreadContext context) {
-            IRubyObject[] array = new IRubyObject[collection.count()];
-            int index = 0;
-            ISeq seq = collection.seq();
-            while (seq != null) {
-                array[index] = (IRubyObject)seq.first();
-                seq = seq.next();
-                index++;
+        @JRubyMethod(name = "==")
+        public IRubyObject op_equal(ThreadContext context, IRubyObject obj) {
+            Ruby runtime = context.runtime;
+
+            if (eql(obj)) {
+                return runtime.getTrue();
             }
-            return context.runtime.newArray(array);
+
+            if (!obj.respondsTo("to_ary")) {
+                return runtime.getFalse();
+            }
+
+            return toRubyArray().op_equal(context, obj.convertToArray());
+        }
+
+        @JRubyMethod(name = "eql?")
+        public IRubyObject eql(ThreadContext context, IRubyObject obj) {
+            Ruby runtime = context.runtime;
+
+            if (this == obj) {
+                return runtime.getTrue();
+            }
+
+            if (obj instanceof Vector) {
+                IPersistentVector otherCollection = ((Vector)obj).collection;
+                if (collection.equals(otherCollection)) {
+                    return runtime.getTrue();
+                }
+            }
+            return runtime.getFalse();
         }
     }
 
